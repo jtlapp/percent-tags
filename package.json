@@ -1,0 +1,26 @@
+{
+  "name": "percent-tags",
+  "version": "0.0.1",
+  "description": "Parser for percent-style comment tags",
+  "main": "build/src/index.js",
+  "repository": "https://github.com/jtlapp/percent-tags.git",
+  "author": "Joe Lapp <arachnojoe@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "tests": "mocha --timeout 5000 -r ts-node/register tests/*.ts"
+  },
+  "bugs": {
+    "url": "https://github.com/jtlapp/percent-tags/issues"
+  },
+  "homepage": "https://github.com/jtlapp/percent-tags#readme",
+  "keywords": [
+    "comment",
+    "documentation",
+    "format",
+    "formatting",
+    "tags",
+    "parser",
+    "javascript",
+    "typescript"
+  ]
+}
