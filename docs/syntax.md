@@ -30,7 +30,7 @@ chunking ambient content
 
 ## Content Blocks
 
-A 'content block' is an ordered series of one or more lines of text. 
+A 'content block' is a series of one or more lines of text. 
 
 Each line tag occupies an entire line of text and possibly subsequent lines but doesn't contribute to the text of the content block. They 
 
@@ -41,30 +41,35 @@ Each line tag occupies an entire line of text and possibly subsequent lines but 
 The ambient content matches the `AmbientBlock` production rule and evaluates to either a text element or an empty element. 
 
 ```ebnf
-AmbientBlock ::= AmbientLine? (_NL AmbientLine?)*;
-AmbientLine ::= IF(LineTagIndicator, LineTag, AnyTextLine);
-LineTagIndicator ::= ST* '%' InitialIdentifierChar;
-AnyTextLine ::= (ContentChar | ST)+;
+AmbientSection ::= BL* AmbientBlock (NL BL+ AmbientBlock)* (NL BL* ST*)?;
+AmbientBlock ::= AmbientTextBlock | TagBlock;
+AmbientTextBlock ::= InitialTextLine (NL TrailingTextLine)*;
+InitialTextLine ::= ST* ((ContentChar - '\' - '%') | '\' ST* ContentChar |
+    '%' S | '%' (ContentChar - ReservedIdentifierChar)) (ContentChar | ST)*;
+TrailingTextLine ::= ST* ContentChar (ContentChar | ST)*;
+ReservedIdentifierChar ::= InitialIdentifierChar | '[' | [({'"`]
 
-LineTag ::= ST* '%' TagSpec (ST+ (InlineValues | InlineTaggedElem))? ST*;
+TagBlock ::= LineTag (NL LineTag)*;
+LineTag ::= ST* '%' TagSpec (InlineDelim (InlineValues | InlineTaggedElem))? ST*;
 TagSpec ::= Identifier ('.' Identifier)? | '.' Identifier;
 Identifier ::= InitialIdentifierChar TrailingIdentifierChar*;
+InlineDelim ::= ST+ (NL ST*)? | NL ST*
 
 InlineValues ::= InlineValue MoreValues? ColonEndLineValue?;
-MoreValues ::= (ST+ InlineValue)+ | (ST* ',' STN* InlineValue)+;
+MoreValues ::= (InlineDelim InlineValue)+ | (ST* ',' STN* InlineValue)+;
 
-InlineTaggedElem ::= InlineTag (ST+ InlineTag)* ColonEndLineValue?;
+InlineTaggedElem ::= InlineTag (InlineDelim InlineTag)* ColonEndLineValue?;
 InlineTag ::= '.' Identifier InlineValue?;
 InlineValue ::= NonTextValue | QuotedValue | Symbol;
 
-ColonEndLineValue ::= ST* ':' ST* EndLineValue;
+ColonEndLineValue ::= InlineDelim? ':' InlineDelim? EndLineValue;
 EndLineValue ::= IF(NonTextValueIndicator, NonTextValue, EndLineText);
 NonTextValueIndicator ::= '{' | '[' | '*' InitialIdentifierChar |
-    Number ST* (_NL | '}' | _EOS);
+    Number ST* (NL | '}' | _EOS_);
 EndLineText ::= ContentChar+ (ST+ ContentChar+)*;
 
 NonTextValue ::= BracketedValue | Array | Reference | Number;
-BracketedValue ::= '{' ValueBlock? '}';
+BracketedValue ::= '{' ValueSection? '}';
 Array ::= '[' (InlineValue MoreValues?)? ']';
 Symbol ::= Identifier ('.' Identifier)*;
 Reference ::= '*' Symbol;
@@ -72,20 +77,29 @@ Number ::= Decimal | Hex;
 Decimal ::= '-'? [0-9]+ ('.' [0-9]+)? ([Ee][-+]?[0-9]+)?;
 Hex ::= '0x' [0-9A-Fa-f]+;
 
-ValueBlock ::= ValueLine (_NL ValueLine?)* | (_NL ValueLine?)+;
-ValueLine ::= IF(LineTagIndicator, LineTag, BalancedLine);
-BalancedLine ::= (NestedBrackets NonBracketText?)+ |
-    NonBracketText (NestedBrackets NonBracketText?)*;
+ValueSection ::= BL* ValueBlock (NL BL+ ValueBlock)* (NL BL* ST*)?;
+ValueBlock ::= ValueTextBlock | TagBlock;
+ValueTextBlock ::= InitialBalancedLine (NL TrailingBalancedLine)*
+InitialBalancedLine ::= BalancedLine(BalancedLineChar - '%'| '%' S |
+    '%' (ContentChar - ReservedIdentifierChar));
+TrailingBalancedLine ::= BalancedLine(BalancedLineChar)
+BalancedLineChar ::= ContentChar - '{' - '}' - '\' - '`'
+BalancedLine(c) ::= (NestedBrackets NonBracketText(c)?)+ |
+    NonBracketText(c) (NestedBrackets NonBracketText(c)?)*;
+NonBracketText(c) ::= (NonBracketChar(c) BacktickEscape?)+ |
+    BacktickEscape (NonBracketChar(c) BacktickEscape?)*;
+NonBracketChar(c)::= c | EscapedChar | ST;
 NestedBrackets ::= '{' NestedContent? '}';
-NonBracketText ::= (NonBracketChar BacktickEscape?)+ |
-    BacktickEscape (NonBracketChar BacktickEscape?)*;
-NonBracketChar ::= ContentChar - '{' - '}' - '\' - '`' | EscapedChar | ST;
-NestedContent ::= BalancedLine (_NL ValueLine?)* | (_NL ValueLine?)+;
+NestedContent ::= NL? NestedTextBlock (NL BL+ ValueBlock)* (NL BL* ST*)? |
+    (NL BL+ ValueBlock)+ (NL BL* ST*)?;
+NestedTextBlock ::= TrailingBalancedLine (NL TrailingBalancedLine)*;
 
 QuotedValue ::= SQuotedValue | DQuotedValue | BacktickEscape;
 SQuotedValue ::= "'" SQuotedText? "'";
 DQuotedValue ::= '"' DQuotedText? '"';
 BacktickEscape ::= (n * '`') BacktickText(n)? '`' {n >= 1};
+
+// TBD: should backticks support escaped chars?
 
 SQuotedText ::= (ContentChar - "'" - '\' | EscapedChar | ST)+;
 DQuotedText ::= (ContentChar - '"' - '\' | EscapedChar | ST)+;
@@ -106,20 +120,21 @@ UnicodeZWJ ::= \u200C;
 UnicodeZWNJ ::= \u200D;
 
 ST ::= S | Tab;
-STN ::= S | Tab | _NL;
-_NL ::= '\'? CR? LF;
+STN ::= S | Tab | NL;
+NL ::= CR? LF;
+BL ::= ST* ('\' ST*)? NL
 
 Tab ::= \u0009;
 CR ::= \u000D;
 LF ::= \u000A;
 S ::= \u0020;
-_EOS ::= ? end of character stream ?;
+_EOS_ ::= ? end of character stream ?;
 ```
 
 ## Modified EBNF
 
 * Excludes commas. Spaces and operators delimit terms. Operator precedence, highest first: (`\`, `[]`), `()`, (`?`, `*`, `+`), `i * X`, ` ` (space), `-`, `|`, `::=`
-* Intraline whitespace (ST, STN) that is not the last token of a production rule only matches when the first required non-whitespace token to follow within the production rule also matches.
+* Intraline whitespace (ST, STN, NL) that is not the last token of a production rule only matches when the first required non-whitespace token to follow within the production rule also matches.
 * The tokens are the literals and productions beginning with `_`.
 * `IF(ifWouldMatchThis, thenMatchThis, elseMatchThis)` - reduces complexity of BNF
 * `R(x)` - Generates a production rule with x expanded in R
@@ -131,7 +146,107 @@ _EOS ::= ? end of character stream ?;
 
 ----
 
-Play:
+# Play
+
+## Accommodate spaces in tag names
+
+%foo: .attr1 32 .attr2 44:: Body text
+%typefail.error: .code 2000 .regex "some error"
+%foo.(prop name): "yowsa"
+%foo: .(prop name) 32
+%foo: .(prop name) [text of prop name]
+%foo: (.prop name) 32
+
+%foo/prop name: "yowsa yowsa"
+%foo/prop name: [yowsa yowsa]
+%typefail/error: /code 2000 /regex "some error"
+%foo/prop name:: yowsa yowsa
+%typefail/error: /code 2000 /regex "some error": yowsa yowsa
+
+%foo/prop name = "yowsa yowsa"
+%foo/prop name = [yowsa yowsa]
+%typefail/error = /code 2000 /regex "some error"
+%foo/prop name: yowsa yowsa
+%typefail/error = /code 2000 /regex "some error": yowsa yowsa
+
+%foo/prop name: [yowsa yowsa]
+%typefail/error: /code 2000 /regex "some error"
+%foo/prop name:= yowsa yowsa
+%typefail/error: /code 2000 /regex "some error" = yowsa yowsa
+
+%foo/prop name: [yowsa yowsa]
+%typefail/error: /code 2000 /regex "some error"
+%typefail/error:| error message
+%typefail/error | error message
+%typefail/error: /code 2000 /regex "some error" | yowsa yowsa
+%typefail/error: /(error code) 2000 /(regular expression) "some error"
+%(w/slashes)/(also w/ slashes)
+
+%typefail/error: /code 2000 /regex [some error] | yowsa yowsa
+%typefail/error: /(error code) 2000 /(regular expression) [some error]
+%(prop name w/ slashes): [prop value]
+%typefail/error: 1000 2000 3000 | text string
+%typefail/error: {1000, 2000, 3000}
+%param: argName [array[]] | Single-line multi-word description
+
+// more like code and @param -- better complements markdown
+
+%tabs: [ 4, 8, 12, 16 ]
+%param: identifier {type} | Single-line multi-word description
+%error: /code 3000 /regex {error message}
+%bio: {First paragraph.
+
+Second paragraph.}
+%bio: {[initial markdown link](http://somewhere.com)}
+%bio: | \[initial markdown link\](http://somewhere.com)
+
+
+// more like markdown -- confusable with markdown
+
+%tabs: { 4, 8, 12, 16 }
+%param: identifier [type] | Single-line multi-word description
+%error: /code 3000 /regex [error message]
+%bio: [First paragraph.
+
+Second paragraph.]
+%bio: [[initial markdown link](http://somewhere.com)]
+%bio | \[initial markdown link\](http://somewhere.com)
+
+
+%typefail/error: /code 2000 /regex {some error} | yowsa yowsa
+%typefail/error: /(error code) 2000 /(regular expression) {some error}
+%(prop name w/ slashes): {prop value}
+%typefail/error: 1000 2000 3000 | text string
+%typefail/error: [1000, 2000, 3000]
+%param: argName {array[]} | Single-line description
+
+%(prop name) 32
+%(typefail.error) .code 2000 .regex "some error"
+%(foo.prop name)
+%foo (.prop name) {text value of prop name}
+%foo (.prop name) [text value of prop name]
+%(prop name) {text value of prop name}
+%(prop name) [text value of prop name]
+%(prop name)[text value of prop name]
+
+%[prop name] {text value of prop name}
+%[prop name] [text value of prop name]
+%[prop name] (text value of prop name)
+%[prop name] .[attr 1] (a1 value)
+%[prop name] .[attr 1] 1234
+%[prop name] .[attr 1] (*ref) -- should still be a reference
+
+%"prop name" ."attr 1" 1234
+
+%namespace."prop name" ."attr 1" [text value]
+
+%namespace.[prop name] .[attr 1] (text value)
+
+
+
+
+
+## Prior Play
 
 ```
 %foo attr1 #symbol attr2 "string"
