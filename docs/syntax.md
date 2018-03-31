@@ -17,6 +17,7 @@ Objectives:
 * simple data structures providing English description or metadata
 * Within the data annotations, able to provide formatted text
 * No or minimal interference with markdown, HTML, handlebars, JavaDocs/JSDocs
+* The meaning of a syntax in one context should suggest the meaning of the same syntax in other contexts.
 
 Non-objectives:
 
@@ -33,6 +34,8 @@ chunking ambient content
 A 'content block' is a series of one or more lines of text. 
 
 Each line tag occupies an entire line of text and possibly subsequent lines but doesn't contribute to the text of the content block. They 
+
+Line tags in ambient sections do not necessarily attribute the entire ambient section. That depends on the enclosing syntax.
 
 
 ## Line Tags
@@ -182,14 +185,186 @@ _EOS_ ::= ? end of character stream ?;
 %typefail/error: /(error code) 2000 /(regular expression) "some error"
 %(w/slashes)/(also w/ slashes)
 
-%typefail/error: /code 2000 /regex [some error] | yowsa yowsa
+%(=abcdef)
+%typefail/error: (=abcdef) /code 2000 /regex [some error] | yowsa yowsa
+%(#abcdef)
+%typefail/error: (#abcdef) /code 2000 /regex [some error] | yowsa yowsa
 %typefail/error: /(error code) 2000 /(regular expression) [some error]
 %(prop name w/ slashes): [prop value]
 %typefail/error: 1000 2000 3000 | text string
 %typefail/error: {1000, 2000, 3000}
 %param: argName [array[]] | Single-line multi-word description
 
-// more like code and @param -- better complements markdown
+%spider %Latrodectus variolus %GB/Phylogeny A1/Marpissa obtusa 
+
+%spider %Latrodectus-variolus %GB/Phylogeny-A1/Marpissa-obtusa
+    -- ppl wanna type, but must escape actual dashes (discouraging use of dashes in tags)
+
+%spider %Latrodectus_variolus %GB/Phylogeny_A1/Marpissa_obtusa
+    -- clearer spaces/dashes, but _ less widely known, encouraging use of dashes in tags
+
+%spider %(Latrodectus variolus) %GB/(Phylogeny A1)/(Marpissa obtusa)
+
+%red-green_color
+%red--green-color
+%red\-green-color
+%company_name: Megatron Inc.
+%company name: {Megatron Inc.}
+%company name: "Megatron Inc."
+%company_name: | Megatron Inc.
+
+%company-name: Megatron Inc.
+%company name: {Megatron Inc.}
+%company name: "Megatron Inc."
+%company name: | Megatron Inc.
+
+%expect-error /code 3001 /regex {error message}
+%expect_error /code 3001 /regex {error message}
+%expect_error /code 3001 /regex "error message"
+
+// colon indicates line syntax, otherwise embeddable syntax
+
+%foo %bar %baz
+%foo(123 list) %bar[text] %baz[%poo %bah embedded text]
+%fuz[/zy /zie embedded text]
+
+%foo: 123
+%foo: 123 list
+%foo: 123 (1 2 3)
+%bar: [words of text]
+%baz: [%poo %bah embedded text]
+%fuz: [/zy /zie embedded text]
+%fuz: /zy /zie[hello]
+%todo: /priority /by[29 Feb 2019] [Do this thing.]
+%todo: /priority [Do this thing.]
+%todo: /priority[high] [Do this thing.]
+%foo: %poo %bah [poo-bah thing]
+%company-name: [Megatron Inc.]
+%expect-error: /code(3001) /regex[error message]
+%expect-error[%/code(3001) %/regex[error message]]
+%expect-error(/code(3001) /regex[error message])
+%foo(/a1 /a2 [av] /b1 /b2 [bv])
+%param: identifier [type] [Description] /attrForNextListItem [Next list item.]
+
+// tweet and post syntax
+
+(The only reason to allow tags within text is for convenience. The tags only characterize the unit as a whole. A person might want to embed a tag in the text to keep from having to redundantly type text, as when the tag name would duplicate some of the text. It might also be easier to throw the tag on the end of a line or at the beginning to keep the text compact and easier to read as a whole. In this latter case, the tags are not part of the text. If tags are to sometimes be part of the text and sometimes not, the two modes will need a syntactic difference, at added syntactic complexity. Perhaps the tags should strictly be separate from the text to restrict tags to being external (sometimes requiring redundant typing) and prevent user confusion over whether they render in the text. Maybe one way to reduce redundancy is with app support for highlighting text to turn it into a tag. But if there's app support maybe there isn't much need for syntax at all; syntax may make the input more convenient and allow for embedding of metadata where there isn't app support.)
+
+%Latrodectus-mactans() Here is my photo.
+%foo 32: My tweet goes here. (X - Produces a list, not a tagged tweet.)
+%foo(32) My tweet goes here.
+%foo% %bar% %foo-bar(foo bar value)
+%foo %bar %foo-bar My tweet goes here.
+%foo; %bar; %foo-bar; My tweet goes here.
+%foo! %bar! %foo-bar! My tweet goes here.
+%foo %bar %foo-bar| My tweet goes here.
+%foo %bar(Bar's value) %foo-bar My tweet goes here.
+%expect-error(/code 3001 /regex {error message})
+%(tag w/ slashes)(/code 3001 /regex {error message})
+%[tag w/ slashes](/code 3001 /regex {error message})
+%[expect error](/[error code] 3001 /[regular expression] [error message])
+%expect-error(/error-code 3001 /regular-expression [error message])
+%expect-error(/code 3001 /regex [error message])
+%expect-error(%code 3001 %regex [error message])
+
+%error (%/code 3001 %/regex [error message])
+%error (/code 3001 /regex [error message])
+%error(/code 3001 /regex [error message])
+%error /code 3001 /regex [error message]
+
+%error: Description
+%error(: Description)
+%param(identifier {type}: Description)
+
+%error [Description]
+%error([Description])
+%param(identifier [type] [Description])
+%param(identifier {type} {Description})
+%param(, identifier, type, Description)
+%param(; identifier; type; Description)
+%param(identifier | type | Description)
+
+%param(; options; [object]; Description of options.)
+
+%param( options | [object] | Description of options. )
+
+%param(options | [object] | Description of options.)
+
+%param( options [object] | Description of options. )
+
+%param(options [object] | Description of options.)
+
+%error(/code 3001 /regex [error message])
+
+%param options {object} Description of options.
+%param {options [object] [Description of options.]}
+
+%param options [object]: Description of options. -- weird
+
+%param options [object] | Description of options. -- weird
+
+%param options [object] [Description of options.] -- better
+
+%param{options [object] [Description of options.]}
+%param {options [object] [Description of options.]}
+
+%param(options [object] [Description of options.])
+%param (options [object] [Description of options.])
+
+%todo /priority /by [12 Feb 2019]: Thing to do.
+
+%todo [%/priority %/by [12 Feb 2019]
+
+Thing to do.]
+
+%todo(| Thing to do.)
+%todo(: Thing to do.)
+%todo([Thing to do.])
+%todo[ Thing to do. ]
+%todo [Thing to do.] -- fine!
+%todo {[Task A] [Task B] [Task C]}
+
+// Require tag values to be bracketed
+
+%todo (/priority /by[12 Feb 2019] Thing to do.) -- should merge these syntaxes
+%todo [%/priority %/by[12 Feb 2019] Thing to do.]
+%todo [/priority: Thing to do.]
+%tabs (1 2 3 4)
+%tabs [/as-spaces: (1 2 3 4)] -- ugh, now have to escape an initial text '('; also colon ambiguity
+ -- but %(maybe w/ slashes) is used for bracketing tag names
+%tabs /as-spaces: {1 2 3 4}
+
+%todo ([Task A] [Task B] [Task C]) -- parameter list (to curly braces!)
+%todo [/priority /by[12 Feb 2019] Thing to do.] -- markup w/ optional value
+
+// more like code and @param -- better complements markdown (spaces as dashes in tag names)
+
+%tabs [ 4, 8, 12, 16 ]
+%param identifier {type}: Single-line multi-word description
+%error /code 3000 /regex "error message"
+%error /code 3000 /regex {error message}
+%bio {First paragraph.
+
+Second paragraph.}
+%bio {[initial markdown link](http://somewhere.com)} -- error prone
+%bio: \[initial markdown link\](http://somewhere.com)
+
+
+// more like markdown -- confusable with markdown (spaces as dashes in tag names)
+//  but more likely to be typed, [] better known, more readable, no need for quoted values
+
+%tabs { 4, 8, 12, 16 }
+%param identifier [type]: Single-line multi-word description
+%error /code 3000 /regex "error message" -- more likely to be typed, no tag escaping
+%error /code 3000 /regex [error message]
+%bio [First paragraph.
+
+Second paragraph.]
+%bio: [[initial markdown link](http://somewhere.com)] -- error prone
+%bio: \[initial markdown link\](http://somewhere.com)
+
+
+// more like code and @param -- better complements markdown (spaces in tag name syntax)
 
 %tabs: [ 4, 8, 12, 16 ]
 %param: identifier {type} | Single-line multi-word description
@@ -201,7 +376,7 @@ Second paragraph.}
 %bio: | \[initial markdown link\](http://somewhere.com)
 
 
-// more like markdown -- confusable with markdown
+// more like markdown -- confusable with markdown (spaces in tag name syntax)
 
 %tabs: { 4, 8, 12, 16 }
 %param: identifier [type] | Single-line multi-word description
