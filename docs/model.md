@@ -59,35 +59,31 @@ Together, elements and tags can characterize textual content with software-reada
 
 ## Element Types
 
-Elements vary in the structure of their content. Each has an inherent type that identifies its structure. Accordingly, any given element is a *literal*, a *list*, or an *empty element*.
+Elements vary in the structure of their content. Each has an inherent type that identifies its structure. Accordingly, any given element is a *text element*, a *list element*, or an *empty element*.
 
-### Literals
+### Text Elements
 
-A 'literal' is an element whose content corresponds to an ordered series of one or more Unicode characters. Literals are the fundamental units of the information model and are intended to represent human-generated, human-readable content. Any given literal is either a *text element* or a *number element*.
-
-A 'number' element represents an integer or floating point number. A number element cannot represent [NaN](https://en.wikipedia.org/wiki/NaN), [signed infinities](https://en.wikipedia.org/wiki/IEEE_754-1985#Positive_and_negative_infinity), or [signed zeros](https://en.wikipedia.org/wiki/Signed_zero).
-
-A 'text element' represents any string of characters that doesn't represent a number. Even so, the content of a text element may be a string of characters that happens to correspond to a number, such as an unpunctuated phone number or an ID that might sometimes contain letters.
+A 'text element' is an element whose content is an ordered series of one or more Unicode characters. Text elements are the fundamental units of the information model and are intended to represent human-generated, human-readable content.
 
 Notice that a text element cannot represent an empty string. In this model, all occurrences of the absence of data are equivalently represented as an empty element. 
 
-No other primitive types are supported, because numbers and strings appear to be universal and other types are easily represented in terms of them. A client application that requires booleans, symbols, regular expressions, dates, etc., would have to define these types in terms of text and number elements. 
+No other primitive types are supported. This is because primitive types are easily represented as text, and because client applications can interpret text according to the types expected, without requiring users to specify both content and type.
 
-### Lists
+### List Elements
 
-A 'list' is an element representing a collection of independently-intelligible units of information. Its content is an ordered series of two or more elements, each of which is called a 'member' of the list. The client application determines whether the order in which members appear is meaningful.
+A 'list element' is an element representing a collection of independently-intelligible units of information. Its content is an ordered series of two or more elements, each of which is called a 'member' of the list element. The client application determines whether the order in which members appear is meaningful.
 
-Examples of lists include a checklist of to-do items, a series of log entries, a series of structured records, and the columns at which to place tab stops.
+Examples of list elements include a checklist of to-do items, a series of log entries, a series of structured records, and the columns at which to place tab stops.
 
-Notice that a list cannot be empty. In this model, an empty set is equivalent to the absence of data, which are both represented as an empty element.
+Notice that a list element cannot be empty. In this model, an empty set is equivalent to the absence of data, which are both represented as an empty element.
 
-Also notice that a list cannot have just one element. This model does not represent collections independently of the elements composing the collections.
+Also notice that a list element cannot have just one member. This model does not represent collections independently of the elements composing the collections.
 
 ### Empty Elements
 
 An 'empty element' is an element representing the absence of primary information. It has no content. An untagged occurrence indicates the complete absence of data. A tagged occurrence indicates a structured record having only properties and types, in any combination, but no immediate content.
 
-Examples of empty elements include the value of a tag that only indicates type, a placeholder within a list, an address consisting of address fields, and a specification for a configuration consisting only of properties.
+Examples of empty elements include the value of a tag that only indicates type, a placeholder within a list element, an address consisting of address fields, and a specification for a configuration consisting only of properties.
 
 Nothing inherently distinguishes the meaning of a tagged empty element from that of an element containing content. Their only difference is structure. Whether data occurs within a tag value or within content is a characteristic of the schema of tags employed to structure the text.
 
@@ -105,11 +101,11 @@ An element may participate in any number of tag associations, but it participate
 
 The 'tag value' is itself an element. It may even be a tagged element. Moreover, a given element may be the value of multiple different tags, allowing values to form arbitrary directed graphs.
 
-When the tag value is a literal, a list, or a tagged empty element, the tag serves as a property assignment on the tagged element, with the tag value being the value of the property. When the tag value is an untagged empty element, the tag instead serves as a type assignment unless the tag type also allows other values.
+When the tag value is a text element, a list element, or a tagged empty element, the tag serves as a property assignment on the tagged element, with the tag value being the value of the property. When the tag value is an untagged empty element, the tag instead serves as a type assignment unless the tag type also allows other values.
 
 ### Tag Types
 
-The 'tag type' of a tagging provides the meaning of the tag and uniquely distinguishes it from all other tags. Any given tag type may participate in any number of taggings of any number of elements. Each tag type has a *tag name* and a *namespace*.
+The 'tag type' of a tag association provides the meaning of the tag and uniquely distinguishes it from all other tags. Any given tag type may participate in any number of taggings of any number of elements. Each tag type has a *tag name* and a *namespace*.
 
 The 'tag name' is a name that is descriptive or suggestive of the tag type, at least within the context of the namespace. It is a character string conforming to the `TagName` production as defined the following modified EBNF<sup>[1](#note_1)</sup>:
 
